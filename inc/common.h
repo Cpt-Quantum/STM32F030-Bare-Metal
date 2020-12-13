@@ -1,0 +1,9 @@
+#ifndef COMMON_H
+#define COMMON_H
+
+#define AHB1_BASE 0x40020000
+#define AHB2_BASE 0x48000000
+#define APB_BASE  0x40000000
+#define SCS_BASE  0xE000E000
+
+#endif //COMMON_H
