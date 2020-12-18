@@ -61,6 +61,61 @@ void start_timer(timer_index_t timer_index, uint16_t prescale, uint16_t count)
 	TIMER_FIELD_WRITE(timer_index, cr1, cen, true);
 }
 
+void clock_setup(bool external_clk, bool use_pll, PLL_MULT_E pll_mult)
+{
+        /* Enable the selected clock and wait for it to be ready */
+        if (external_clk == true)
+        {
+                RCC_FIELD_WRITE(cr, hseon, true);
+                while(!(RCC_FIELD_READ(cr, hserdy))) {};
+        }
+        else
+        {
+                RCC_FIELD_WRITE(cr, hsion, true);
+                while(!(RCC_FIELD_READ(cr, hsirdy))) {};
+        }
+
+        /* Now enable the PLL if requested */
+        if (use_pll == true)
+        {
+                rcc_cfgr_t cfgr = { .mask= rcc->cfgr };
+                if (external_clk == true)
+                {
+                        cfgr.pllsrc = 1;
+                }
+                else
+                {
+                        cfgr.pllsrc = 0;
+                }
+                cfgr.pllmul = pll_mult;
+                rcc->cfgr = cfgr.mask;
+
+                /* Turn the PLL on and wait for the hardware to set the ready flag */
+                RCC_FIELD_WRITE(cr, pllon, true);
+                while(!(RCC_FIELD_READ(cr, pllrdy))) {};
+        }
+
+        /* Now set the clock source according to the function parameters */
+        if (use_pll == true)
+        {
+                RCC_FIELD_WRITE(cfgr, sw, SYSCLK_SW_PLL);
+                /* Check it's set by reading SWS (switch status) */
+                while(RCC_FIELD_READ(cfgr, sws) != SYSCLK_SW_PLL) {};
+        }
+        else if (external_clk == true)
+        {
+                RCC_FIELD_WRITE(cfgr, sw, SYSCLK_SW_HSE);
+                /* Check it's set by reading SWS (switch status) */
+                while(RCC_FIELD_READ(cfgr, sws) != SYSCLK_SW_HSE) {};
+        }
+        else if (external_clk == false)
+        {
+                RCC_FIELD_WRITE(cfgr, sw, SYSCLK_SW_HSI);
+                /* Check it's set by reading SWS (switch status) */
+                while(RCC_FIELD_READ(cfgr, sws) != SYSCLK_SW_HSI) {};
+        }
+}
+
 int main(void)
 {
 	/* Set up the flash wait states */
@@ -69,28 +124,11 @@ int main(void)
 	acr.prftbe = true;
 	flash->acr = acr.mask;
 
-	/* Clock setup */
-	/* First, enable the HSE and wait for the hardware to set the ready flag */
-	RCC_FIELD_WRITE(cr, hseon, true);
-	while(!(RCC_FIELD_READ(cr, hserdy))) {};
-
-	/* Use the HSE (8MHz xtal) and use a PLL value of 6 to make a 48MHz clock */
-	rcc_cfgr_t cfgr = { .mask= rcc->cfgr };
-	cfgr.pllsrc = 1;
-	cfgr.pllmul = PLL_MULT_X6;
-	rcc->cfgr = cfgr.mask;
-
-	/* Turn the PLL on and wait for the hardware to set the ready flag */
-	RCC_FIELD_WRITE(cr, pllon, true);
-	while(!(RCC_FIELD_READ(cr, pllrdy))) {};
-
-	/* Select the PLL as the system clock source */
-	RCC_FIELD_WRITE(cfgr, sw, SYSCLK_SW_PLL);
-	/* Check it's set by reading SWS (switch status) */
-	while(RCC_FIELD_READ(cfgr, sws) != SYSCLK_SW_PLL) {};
-	/* End of clock setup */
-
-#define CLOCK_FREQ (uint16_t)0x48000000
+	/* Clock setup, use the HSE, which is an 8MHz crystal */
+	/* Also enable the PLL and set to multiply by 6 */
+	/* This will result in a clock with a frequency of 48MHz */
+	clock_setup(true, true, PLL_MULT_X6);
+	#define CLOCK_FREQ (uint16_t)0x48000000
 
 	/* Enable the clock and NVIC for timer 3 */
 	RCC_FIELD_WRITE(apb1enr, tim3en, true);
