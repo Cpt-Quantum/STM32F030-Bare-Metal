@@ -155,8 +155,6 @@ int main(void)
 	GPIOA->MODER &= ~(GPIO_MODER_MAX << (LED_PIN * 2));
 	/* Now set the pin to be an output */
 	GPIOA->MODER |= (GPIO_OUTPUT << (LED_PIN * 2));
-	/* Ensure the pin speed is set to low */
-	GPIOA->OTYPER &= ~(1 << LED_PIN);
 	/* Finally set the pin high */
 	GPIOA->ODR &= (1 << LED_PIN);
 
