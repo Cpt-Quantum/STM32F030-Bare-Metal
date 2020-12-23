@@ -61,7 +61,7 @@ reset_handler:
 	BCC		reset_bss
 
 	/* Now branch to main */
-	B		main
+	BL		main
 
 .size reset_handler, .-reset_handler
 
